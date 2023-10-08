@@ -2,11 +2,14 @@
   "name": "discord-bot-automation",
   "version": "1.0.0",
   "description": "This Discord bot is designed to automate the verification process for activities or challenges that require participants to post their daily progress, such as \"30 Days of Code.\" It helps keep track of participants' daily contributions and identifies users who are eligible for prizes based on their consistent activity.",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^14.13.0"
+  }
 }
