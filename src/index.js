@@ -1,9 +1,8 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const mongoose = require("mongoose");
-const pdfkit = require("pdfkit");
+const XLSX = require("xlsx");
 const fs = require("fs");
-const doc = new pdfkit();
 
 const client = new Client({
   intents: [
@@ -54,6 +53,10 @@ db.once("open", () => {
         let streak = 1;
         let eligibility = true;
 
+        // Extract the username from the message content
+        const usernameMatch = /@(\S+)/.exec(message.content);
+        const username = usernameMatch ? usernameMatch[1] : "Unknown"; // Use "Unknown" if no username found
+
         // Check the user's previous entry date to calculate streak
         const lastEntry = await User.findOne({ userId }).sort({
           entryDate: -1,
@@ -63,12 +66,11 @@ db.once("open", () => {
           const today = new Date();
           const lastEntryDate = new Date(lastEntry.entryDate);
 
-          // Check if the user is posting daily
           if (isDaily(lastEntryDate, today)) {
             streak = lastEntry.streak + 1;
           } else {
             streak = 1;
-            eligibility = false; // Reset eligibility if they missed a day
+            eligibility = false;
           }
         }
 
@@ -78,6 +80,7 @@ db.once("open", () => {
           submissionFormat,
           streak,
           eligibility,
+          username, // Save the username in the database
         });
 
         newUser
@@ -97,30 +100,82 @@ db.once("open", () => {
       }
     }
 
+    // if (message.content === "!export-eligible") {
+    //   // Implement logic to fetch eligible participants from the database
+    //   const eligibleParticipants = await User.find({ eligibility: true });
+
+    //   // Create a PDF with the list of eligible participants
+
+    //   doc.pipe(fs.createWriteStream("eligible_participants.pdf"));
+    //   doc
+    //     .fontSize(18)
+    //     .text("Eligible Participants", { align: "center" })
+    //     .fontSize(14);
+
+    //   eligibleParticipants.forEach((participant) => {
+    //     doc.text(`User ID: ${participant.userId}`);
+    //     doc.text(`Submission Format: ${participant.submissionFormat}`);
+    //     doc.text(`Streak: ${participant.streak}`);
+    //     doc.text("-----------------------------");
+    //   });
+
+    //   doc.end();
+
+    //   // Send the PDF to the user
+    //   message.author.send({
+    //     files: ["eligible_participants.pdf"],
+    //   });
+    // }
     if (message.content === "!export-eligible") {
-      // Implement logic to fetch eligible participants from the database
       const eligibleParticipants = await User.find({ eligibility: true });
 
-      // Create a PDF with the list of eligible participants
+      // Define the data with proper column headers
+      const data = eligibleParticipants.map((participant) => ({
+        "User ID": participant.userId,
+        Username: participant.username,
+        "Submission Format": participant.submissionFormat,
+        Streak: participant.streak,
+      }));
 
-      doc.pipe(fs.createWriteStream("eligible_participants.pdf"));
-      doc
-        .fontSize(18)
-        .text("Eligible Participants", { align: "center" })
-        .fontSize(14);
+      // Create an Excel sheet
+      const ws = XLSX.utils.json_to_sheet(data);
 
-      eligibleParticipants.forEach((participant) => {
-        doc.text(`User ID: ${participant.userId}`);
-        doc.text(`Submission Format: ${participant.submissionFormat}`);
-        doc.text(`Streak: ${participant.streak}`);
-        doc.text("-----------------------------");
-      });
+      // Create a workbook and add the worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
 
-      doc.end();
+      // Write the workbook to a file
+      XLSX.writeFile(wb, "eligible_participants.xlsx");
 
-      // Send the PDF to the user
+      // Send the Excel file to the user
       message.author.send({
-        files: ["eligible_participants.pdf"],
+        files: ["eligible_participants.xlsx"],
+      });
+    }
+    if (message.content === "!export-eligible") {
+      const eligibleParticipants = await User.find({ eligibility: true });
+
+      // Define the data with proper column headers
+      const data = eligibleParticipants.map((participant) => ({
+        "User ID": participant.userId,
+        Username: participant.username,
+        "Submission Format": participant.submissionFormat,
+        Streak: participant.streak,
+      }));
+
+      // Create an Excel sheet
+      const ws = XLSX.utils.json_to_sheet(data);
+
+      // Create a workbook and add the worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
+
+      // Write the workbook to a file
+      XLSX.writeFile(wb, "eligible_participants.xlsx");
+
+      // Send the Excel file to the user
+      message.author.send({
+        files: ["eligible_participants.xlsx"],
       });
     }
   });
@@ -129,14 +184,13 @@ db.once("open", () => {
 // Helper functions
 
 function isValidLink(link) {
-  // Implement logic to validate the format of the user's post link
-  // Example: Check if the link contains "https://twitter.com/" for Twitter posts
-  return (
-    link.startsWith("https://twitter.com/") ||
-    link.startsWith("https://www.twitter.com/") ||
-    link.startsWith("https://www.linkedin.com/")
-  );
-  // You can add more conditions to match other valid formats
+  // Adjust the logic to validate Twitter and LinkedIn links correctly
+  // Check if the link contains the valid patterns for Twitter or LinkedIn
+  const twitterPattern = /https:\/\/twitter.com\/[A-Za-z0-9_]+\/status\/\d+/;
+  const linkedinPattern =
+    /https:\/\/www.linkedin.com\/posts\/[A-Za-z0-9_-]+\/.+/;
+
+  return twitterPattern.test(link) || linkedinPattern.test(link);
 }
 
 function getSubmissionFormat(link) {
