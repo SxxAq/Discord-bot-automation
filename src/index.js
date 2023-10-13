@@ -30,6 +30,7 @@ db.once("open", () => {
 
   const userSchema = new mongoose.Schema({
     userId: String,
+    username: String,
     entryDate: Date,
     submissionFormat: String,
     streak: Number,
@@ -54,8 +55,13 @@ db.once("open", () => {
         let eligibility = true;
 
         // Extract the username from the message content
-        const usernameMatch = /@(\S+)/.exec(message.content);
-        const username = usernameMatch ? usernameMatch[1] : "Unknown"; // Use "Unknown" if no username found
+        // Extract mentioned users from the message
+        const mentionedUsers = message.mentions.users;
+
+        // Use the first mentioned user as the username (if available)
+        const username = mentionedUsers.first()
+          ? mentionedUsers.first().username
+          : "Unknown";
 
         // Check the user's previous entry date to calculate streak
         const lastEntry = await User.findOne({ userId }).sort({
@@ -76,13 +82,14 @@ db.once("open", () => {
 
         const newUser = new User({
           userId,
+          username, // Save the username in the database
           entryDate,
           submissionFormat,
           streak,
           eligibility,
-          username, // Save the username in the database
         });
-
+        console.log("Extracted username:", username);
+        console.log("New User Object:", newUser);
         newUser
           .save()
           .then((savedUser) => {
@@ -126,7 +133,7 @@ db.once("open", () => {
     //     files: ["eligible_participants.pdf"],
     //   });
     // }
-    if (message.content === "!export-eligible") {
+    if (message.content === "!export") {
       const eligibleParticipants = await User.find({ eligibility: true });
 
       // Define the data with proper column headers
