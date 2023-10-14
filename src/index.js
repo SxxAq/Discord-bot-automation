@@ -231,11 +231,10 @@ db.once("open", () => {
 function isValidLink(link) {
   // Adjust the logic to validate Twitter and LinkedIn links correctly
   // Check if the link contains the valid patterns for Twitter or LinkedIn
-  const twitterPattern = /https:\/\/twitter.com\/[A-Za-z0-9_]+\/status\/\d+/;
-  const linkedinPattern =
-    /https:\/\/www.linkedin.com\/posts\/[A-Za-z0-9_-]+\/.+/;
+  const twitterRegex = /https:\/\/twitter.com\/[A-Za-z0-9_]+\/status\/\d+/;
+  const linkedinRegex = /https:\/\/www.linkedin.com\/.*\//;
 
-  return twitterPattern.test(link) || linkedinPattern.test(link);
+  return twitterRegex.test(link) || linkedinRegex.test(link);
 }
 
 function getSubmissionFormat(link) {
