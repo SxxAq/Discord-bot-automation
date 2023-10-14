@@ -39,11 +39,13 @@ db.once("open", () => {
   });
 
   const User = mongoose.model("User", userSchema);
-
+  //---------------------------------- BOT -------------------------------------------//
   client.on("messageCreate", async (message) => {
     if (message.author.bot) {
       return;
     }
+
+    //-------------------------- ABOUT COMMAND---------------------------------------------//
     if (message.content === "!about") {
       const aboutEmbed = {
         color: 0x0099ff,
@@ -68,6 +70,7 @@ db.once("open", () => {
 
       message.channel.send({ embeds: [aboutEmbed] });
     }
+    //------------------------------- HELP COMMAND ------------------------------------------//
     if (message.content === "!help") {
       const helpEmbed = {
         color: 0x0099ff,
@@ -75,15 +78,19 @@ db.once("open", () => {
         description: "List of available commands and their descriptions:",
         fields: [
           {
-            name: "!post",
+            name: "!submit",
             value: "Submit your daily progress.",
           },
           {
-            name: "!submit",
+            name: "!resubmit",
             value: "Resubmit your progress for today.",
           },
           {
-            name: "!export-eligible",
+            name: "!streak",
+            value: "Display Streak🔥.",
+          },
+          {
+            name: "!export",
             value: "Export a list of eligible participants.",
           },
           {
@@ -98,7 +105,7 @@ db.once("open", () => {
 
       message.channel.send({ embeds: [helpEmbed] });
     }
-
+    //-------------------------------------- SUBMIT_TASK_POST_SETUP ------------------------------//
     if (message.content.startsWith("!submit")) {
       const userLink = message.content.slice("!submit".length).trim();
 
@@ -171,7 +178,7 @@ db.once("open", () => {
         );
       }
     }
-
+    //---------------------------------- EXPORT_CHALLENGE_RECORD_SHEET ------------------------//
     if (message.content === "!export") {
       const eligibleParticipants = await User.find({ eligibility: true });
 
@@ -198,6 +205,8 @@ db.once("open", () => {
         files: ["eligible_participants.xlsx"],
       });
     }
+
+    //---------------------------------------- CHECK_STREAK ---------------------------------//
     if (message.content === "!streak") {
       const userId = message.author.id;
 
@@ -226,19 +235,18 @@ db.once("open", () => {
   });
 });
 
-// Helper functions
+//------------------------------> Helper functions <-------------------------------
 
+// Adjust the logic to validate Twitter and LinkedIn links correctly
 function isValidLink(link) {
-  // Adjust the logic to validate Twitter and LinkedIn links correctly
   // Check if the link contains the valid patterns for Twitter or LinkedIn
   const twitterRegex = /https:\/\/twitter.com\/[A-Za-z0-9_]+\/status\/\d+/;
   const linkedinRegex = /https:\/\/www.linkedin.com\/.*\//;
 
   return twitterRegex.test(link) || linkedinRegex.test(link);
 }
-
+// Implement logic to detect the submission format (Twitter, LinkedIn, etc.)
 function getSubmissionFormat(link) {
-  // Implement logic to detect the submission format (Twitter, LinkedIn, etc.)
   if (link.startsWith("https://twitter.com/")) {
     return "Twitter";
   } else if (link.startsWith("https://www.linkedin.com/")) {
@@ -247,15 +255,16 @@ function getSubmissionFormat(link) {
     return "Unknown"; // Default to unknown format
   }
 }
-
+// Implement logic to check if the user is posting daily
 function isDaily(lastEntryDate, today) {
-  // Implement logic to check if the user is posting daily
   // You may want to account for time zones and any specific posting time window
   const oneDay = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
   return (
     today - lastEntryDate <= oneDay // Check if the difference is less than 24 hours
   );
 }
+
+//-----------------------------------------BOT-------------------------//
 client.on("ready", (c) => {
   console.log(`✅${c.user.tag} is online.`);
 });
