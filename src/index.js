@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, MessageEmbed } = require("discord.js");
 const mongoose = require("mongoose");
 const XLSX = require("xlsx");
 const fs = require("fs");
@@ -35,6 +35,7 @@ db.once("open", () => {
     submissionFormat: String,
     streak: Number,
     eligibility: Boolean,
+    lastSubmissionDate: Date, // to enforce the cooldown
   });
 
   const User = mongoose.model("User", userSchema);
@@ -43,9 +44,63 @@ db.once("open", () => {
     if (message.author.bot) {
       return;
     }
+    if (message.content === "!about") {
+      const aboutEmbed = {
+        color: 0x0099ff,
+        title: "Task Patrol Bot - About",
+        description:
+          "Task Patrol Bot is designed to automate the verification process for activities or challenges that require participants to post their daily progress, such as '30 Days of Code.' It helps keep track of participants' daily contributions and identifies users who are eligible for prizes based on their consistent activity.",
+        fields: [
+          {
+            name: "Author",
+            value: "[Saalim Aqueel](https://github.com/SxxAq)",
+          },
+          {
+            name: "GitHub",
+            value:
+              "[Link to GitHub Repository](https://github.com/SxxAq/Discord-bot-automation)",
+          },
+        ],
+        footer: {
+          text: "Task Patrol Bot",
+        },
+      };
 
-    if (message.content.startsWith("!post")) {
-      const userLink = message.content.slice("!post".length).trim();
+      message.channel.send({ embeds: [aboutEmbed] });
+    }
+    if (message.content === "!help") {
+      const helpEmbed = {
+        color: 0x0099ff,
+        title: "Task Patrol Bot - Commands",
+        description: "List of available commands and their descriptions:",
+        fields: [
+          {
+            name: "!post",
+            value: "Submit your daily progress.",
+          },
+          {
+            name: "!submit",
+            value: "Resubmit your progress for today.",
+          },
+          {
+            name: "!export-eligible",
+            value: "Export a list of eligible participants.",
+          },
+          {
+            name: "!help",
+            value: "Display this help message.",
+          },
+        ],
+        footer: {
+          text: "Task Patrol Bot",
+        },
+      };
+
+      message.channel.send({ embeds: [helpEmbed] });
+    }
+
+    if (message.content.startsWith("!submit")) {
+      const userLink = message.content.slice("!submit".length).trim();
 
       if (isValidLink(userLink)) {
         const userId = message.author.id;
@@ -55,16 +110,11 @@ db.once("open", () => {
         let eligibility = true;
 
         // Extract the username from the message content
-        // Extract mentioned users from the message
-        const mentionedUsers = message.mentions.users;
+        const user = await client.users.fetch(userId);
+        const username = user.username;
 
-        // Use the first mentioned user as the username (if available)
-        const username = mentionedUsers.first()
-          ? mentionedUsers.first().username
-          : "Unknown";
-
-        // Check the user's previous entry date to calculate streak
-        const lastEntry = await User.findOne({ userId }).sort({
+        // Check if the user has submitted progress today
+        let lastEntry = await User.findOne({ userId }).sort({
           entryDate: -1,
         });
 
@@ -73,23 +123,38 @@ db.once("open", () => {
           const lastEntryDate = new Date(lastEntry.entryDate);
 
           if (isDaily(lastEntryDate, today)) {
-            streak = lastEntry.streak + 1;
-          } else {
-            streak = 1;
-            eligibility = false;
+            // User has already submitted today, reject the submission
+            message.reply("You have already submitted progress today.");
+            return;
           }
+
+          // Update the last submission date
+          lastEntry.lastSubmissionDate = today;
+          lastEntry.save();
+          streak = lastEntry.streak + 1;
+        } else {
+          lastEntry = new User({
+            userId,
+            username,
+            entryDate,
+            submissionFormat,
+            streak,
+            eligibility,
+            lastSubmissionDate: entryDate,
+          });
+          lastEntry.save();
         }
 
         const newUser = new User({
           userId,
-          username, // Save the username in the database
+          username,
           entryDate,
           submissionFormat,
           streak,
           eligibility,
+          lastSubmissionDate: entryDate,
         });
-        console.log("Extracted username:", username);
-        console.log("New User Object:", newUser);
+
         newUser
           .save()
           .then((savedUser) => {
@@ -107,32 +172,6 @@ db.once("open", () => {
       }
     }
 
-    // if (message.content === "!export-eligible") {
-    //   // Implement logic to fetch eligible participants from the database
-    //   const eligibleParticipants = await User.find({ eligibility: true });
-
-    //   // Create a PDF with the list of eligible participants
-
-    //   doc.pipe(fs.createWriteStream("eligible_participants.pdf"));
-    //   doc
-    //     .fontSize(18)
-    //     .text("Eligible Participants", { align: "center" })
-    //     .fontSize(14);
-
-    //   eligibleParticipants.forEach((participant) => {
-    //     doc.text(`User ID: ${participant.userId}`);
-    //     doc.text(`Submission Format: ${participant.submissionFormat}`);
-    //     doc.text(`Streak: ${participant.streak}`);
-    //     doc.text("-----------------------------");
-    //   });
-
-    //   doc.end();
-
-    //   // Send the PDF to the user
-    //   message.author.send({
-    //     files: ["eligible_participants.pdf"],
-    //   });
-    // }
     if (message.content === "!export") {
       const eligibleParticipants = await User.find({ eligibility: true });
 
@@ -159,31 +198,30 @@ db.once("open", () => {
         files: ["eligible_participants.xlsx"],
       });
     }
-    if (message.content === "!export-eligible") {
-      const eligibleParticipants = await User.find({ eligibility: true });
+    if (message.content === "!streak") {
+      const userId = message.author.id;
 
-      // Define the data with proper column headers
-      const data = eligibleParticipants.map((participant) => ({
-        "User ID": participant.userId,
-        Username: participant.username,
-        "Submission Format": participant.submissionFormat,
-        Streak: participant.streak,
-      }));
-
-      // Create an Excel sheet
-      const ws = XLSX.utils.json_to_sheet(data);
-
-      // Create a workbook and add the worksheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
-
-      // Write the workbook to a file
-      XLSX.writeFile(wb, "eligible_participants.xlsx");
-
-      // Send the Excel file to the user
-      message.author.send({
-        files: ["eligible_participants.xlsx"],
+      // Check the user's previous entry date to calculate streak
+      const lastEntry = await User.findOne({ userId }).sort({
+        entryDate: -1,
       });
+
+      if (lastEntry) {
+        const today = new Date();
+        const lastEntryDate = new Date(lastEntry.entryDate);
+
+        if (isDaily(lastEntryDate, today)) {
+          message.channel.send(
+            `Your current streak is ${lastEntry.streak} days.`
+          );
+        } else {
+          message.channel.send(
+            "You need to submit progress today to maintain your streak."
+          );
+        }
+      } else {
+        message.channel.send("You have not submitted any progress yet.");
+      }
     }
   });
 });
