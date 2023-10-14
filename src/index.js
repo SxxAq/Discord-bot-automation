@@ -2,6 +2,7 @@ require("dotenv").config();
 const { Client, GatewayIntentBits, MessageEmbed } = require("discord.js");
 const mongoose = require("mongoose");
 const XLSX = require("xlsx");
+const PDFDocument = require("pdfkit");
 const fs = require("fs");
 
 const client = new Client({
@@ -178,33 +179,64 @@ db.once("open", () => {
         );
       }
     }
+    //------------------------------------ RESUBMIT_TASK_FOR_TODAY [EDIT] ---------------------------//
+    if (message.content.startsWith("!resubmit")) {
+      const resubmissionLink = message.content.slice("!resubmit".length).trim();
+
+      // Check if the resubmission link is in the correct format
+      if (!isValidLink(resubmissionLink)) {
+        message.reply(
+          "Invalid resubmission link format. Please check and try again."
+        );
+        return;
+      }
+
+      const userId = message.author.id;
+      const today = new Date();
+
+      // Retrieve the user's previous entry for the current day (if it exists)
+      const previousEntry = await User.findOne({ userId, entryDate: today });
+
+      if (previousEntry) {
+        // Update the previous entry with the new submission link
+        previousEntry.submissionFormat = getSubmissionFormat(resubmissionLink);
+
+        // Update any other fields as needed
+
+        // Save the updated entry
+        previousEntry.save();
+
+        // Inform the user that their resubmission has been recorded
+        message.reply("Your resubmission has been recorded!");
+      } else {
+        // If no previous entry is found, create a new entry for the user for the current day
+        const user = await client.users.fetch(userId);
+        const username = user.username;
+        const entryDate = today;
+        const submissionFormat = getSubmissionFormat(resubmissionLink);
+        const streak = 1;
+        const eligibility = true;
+
+        const newUser = new User({
+          userId,
+          username,
+          entryDate,
+          submissionFormat,
+          streak,
+          eligibility,
+          lastSubmissionDate: entryDate,
+        });
+
+        // Save the new entry
+        newUser.save();
+
+        // Inform the user that their resubmission has been recorded
+        message.reply("Your resubmission has been recorded!");
+      }
+    }
+
     //---------------------------------- EXPORT_CHALLENGE_RECORD_SHEET ------------------------//
-    // if (message.content === "!export") {
-    //   const eligibleParticipants = await User.find({ eligibility: true });
 
-    //   // Define the data with proper column headers
-    //   const data = eligibleParticipants.map((participant) => ({
-    //     "User ID": participant.userId,
-    //     Username: participant.username,
-    //     "Submission Format": participant.submissionFormat,
-    //     Streak: participant.streak,
-    //   }));
-
-    //   // Create an Excel sheet
-    //   const ws = XLSX.utils.json_to_sheet(data);
-
-    //   // Create a workbook and add the worksheet
-    //   const wb = XLSX.utils.book_new();
-    //   XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
-
-    //   // Write the workbook to a file
-    //   XLSX.writeFile(wb, "eligible_participants.xlsx");
-
-    //   // Send the Excel file to the user
-    //   message.author.send({
-    //     files: ["eligible_participants.xlsx"],
-    //   });
-    // }
     if (message.content === "!export") {
       const allParticipants = await User.find();
 
@@ -239,6 +271,62 @@ db.once("open", () => {
         });
       }
     }
+    //---------------------------------- EXPORT_ELIGIBLE_XLSX -------------------------------//
+    if (message.content === "!export-eligible-xlsx") {
+      const eligibleParticipants = await User.find({ eligibility: true });
+
+      // Define the data with proper column headers
+      const data = eligibleParticipants.map((participant) => ({
+        "User ID": participant.userId,
+        Username: participant.username,
+        "Submission Format": participant.submissionFormat,
+        Streak: participant.streak,
+      }));
+
+      // Create an Excel sheet
+      const ws = XLSX.utils.json_to_sheet(data);
+
+      // Create a workbook and add the worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
+
+      // Write the workbook to a file
+      XLSX.writeFile(wb, "eligible_participants.xlsx");
+
+      // Send the Excel file to the user
+      message.author.send({
+        files: ["eligible_participants.xlsx"],
+      });
+    }
+    //-------------------------------------- EXPORT_ELIGIBLE_PDF -----------------------------//
+
+    if (message.content === "!export-eligible") {
+      const eligibleParticipants = await User.find({ eligibility: true });
+
+      // Create a PDF document
+      const doc = new PDFDocument();
+      const stream = fs.createWriteStream("eligible_participants.pdf");
+
+      doc.pipe(stream);
+
+      doc.fontSize(16).text("Eligible Participants", { align: "center" });
+      doc.moveDown();
+
+      eligibleParticipants.forEach((participant) => {
+        doc.text(`User ID: ${participant.userId}`);
+        doc.text(`Username: ${participant.username}`);
+        doc.text(`Streak: ${participant.streak}`);
+        doc.moveDown();
+      });
+
+      doc.end();
+
+      // Send the PDF file to the user
+      message.author.send({
+        files: ["eligible_participants.pdf"],
+      });
+    }
+
     //---------------------------------------- CHECK_STREAK ---------------------------------//
     if (message.content === "!streak") {
       const userId = message.author.id;
@@ -280,10 +368,10 @@ function isValidLink(link) {
 }
 // Implement logic to detect the submission format (Twitter, LinkedIn, etc.)
 function getSubmissionFormat(link) {
-  if (link.startsWith("https://twitter.com/")) {
-    return "Twitter";
-  } else if (link.startsWith("https://www.linkedin.com/")) {
+  if (link.includes("linkedin.com/")) {
     return "LinkedIn";
+  } else if (link.includes("twitter.com/")) {
+    return "Twitter";
   } else {
     return "Unknown"; // Default to unknown format
   }
