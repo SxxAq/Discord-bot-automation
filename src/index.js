@@ -87,11 +87,11 @@ db.once("open", () => {
           },
           {
             name: "!streak",
-            value: "Display Streak🔥.",
+            value: "Display your current streak.",
           },
           {
             name: "!export",
-            value: "Export a list of eligible participants.",
+            value: "Export Record of all participants.",
           },
           {
             name: "!help",
@@ -179,33 +179,66 @@ db.once("open", () => {
       }
     }
     //---------------------------------- EXPORT_CHALLENGE_RECORD_SHEET ------------------------//
+    // if (message.content === "!export") {
+    //   const eligibleParticipants = await User.find({ eligibility: true });
+
+    //   // Define the data with proper column headers
+    //   const data = eligibleParticipants.map((participant) => ({
+    //     "User ID": participant.userId,
+    //     Username: participant.username,
+    //     "Submission Format": participant.submissionFormat,
+    //     Streak: participant.streak,
+    //   }));
+
+    //   // Create an Excel sheet
+    //   const ws = XLSX.utils.json_to_sheet(data);
+
+    //   // Create a workbook and add the worksheet
+    //   const wb = XLSX.utils.book_new();
+    //   XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
+
+    //   // Write the workbook to a file
+    //   XLSX.writeFile(wb, "eligible_participants.xlsx");
+
+    //   // Send the Excel file to the user
+    //   message.author.send({
+    //     files: ["eligible_participants.xlsx"],
+    //   });
+    // }
     if (message.content === "!export") {
-      const eligibleParticipants = await User.find({ eligibility: true });
+      const allParticipants = await User.find();
 
-      // Define the data with proper column headers
-      const data = eligibleParticipants.map((participant) => ({
-        "User ID": participant.userId,
-        Username: participant.username,
-        "Submission Format": participant.submissionFormat,
-        Streak: participant.streak,
-      }));
+      if (allParticipants.length === 0) {
+        message.reply("No participants found.");
+      } else {
+        // Define the data with proper column headers
+        const data = allParticipants.map((participant) => ({
+          "User ID": participant.userId,
+          Username: participant.username,
+          "Submission Format": participant.submissionFormat,
+          Streak: participant.streak,
+        }));
 
-      // Create an Excel sheet
-      const ws = XLSX.utils.json_to_sheet(data);
+        // Generate a file name based on the current date and time
+        const currentDate = new Date();
+        const fileName = `all_participants_${currentDate.toISOString()}.xlsx`;
 
-      // Create a workbook and add the worksheet
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Eligible Participants");
+        // Create an Excel sheet
+        const ws = XLSX.utils.json_to_sheet(data);
 
-      // Write the workbook to a file
-      XLSX.writeFile(wb, "eligible_participants.xlsx");
+        // Create a workbook and add the worksheet
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "All Participants");
 
-      // Send the Excel file to the user
-      message.author.send({
-        files: ["eligible_participants.xlsx"],
-      });
+        // Write the workbook to the file with the generated name
+        XLSX.writeFile(wb, fileName);
+
+        // Send the Excel file to the user
+        message.author.send({
+          files: [fileName],
+        });
+      }
     }
-
     //---------------------------------------- CHECK_STREAK ---------------------------------//
     if (message.content === "!streak") {
       const userId = message.author.id;
