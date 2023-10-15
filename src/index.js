@@ -286,7 +286,10 @@ db.once("open", () => {
       checkDailyProgress
     );
     //============================Manually trigger reminder [Testing]========================
-    if (message.content === "!testreminder") {
+    if (
+      message.content === "!testreminder" &&
+      message.author.id === "923866421811879967"
+    ) {
       checkDailyProgress(); // Manually trigger the reminder check
       message.channel.send("Testing reminders..."); // Send a confirmation message
     }
