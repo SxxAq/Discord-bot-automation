@@ -1,4 +1,3 @@
-```markdown
 # Task Patrol Bot
 
 Task Patrol Bot is a Discord bot designed to automate the verification process for activities or challenges that require participants to post their daily progress, such as "30 Days of Code." It helps keep track of participants' daily contributions and identifies users who are eligible for prizes based on their consistent activity.
@@ -97,5 +96,3 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-
-```
