@@ -40,19 +40,23 @@ Before setting up Task Patrol Bot, you'll need:
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/SxxAq/Discord-bot-automation.git
    ```
 
 2. Install dependencies:
+
    ```bash
    cd Discord-bot-automation
    npm install
    ```
 
-3. Create a `.env` file in the project directory and add your Discord bot token:
+3. Create a `.env` file in the project directory and add your Discord bot token & MongoDB connection string:
+
    ```
    TOKEN=your_discord_bot_token
+   MONGODB_URI=your_mongodb_connection_string
    ```
 
 4. Start the bot:
@@ -95,4 +99,3 @@ Contributions to Task Patrol Bot are welcome! If you have suggestions or want to
 This project is open source and available under the [MIT License](LICENSE).
 
 ---
-

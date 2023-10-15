@@ -16,7 +16,7 @@ const client = new Client({
 });
 
 // Database Setup
-mongoose.connect("mongodb://127.0.0.1:27017/taskPatrolBOT", {
+mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
