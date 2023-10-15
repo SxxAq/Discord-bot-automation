@@ -2,6 +2,7 @@ require("dotenv").config();
 const { Client, GatewayIntentBits, MessageEmbed } = require("discord.js");
 const mongoose = require("mongoose");
 const XLSX = require("xlsx");
+const schedule = require("node-schedule");
 const PDFDocument = require("pdfkit");
 const fs = require("fs");
 
@@ -234,7 +235,46 @@ db.once("open", () => {
         message.reply("Your resubmission has been recorded!");
       }
     }
+    //-------------------------------------- SEND_REMINDERS ----------------------------------//
+    async function checkDailyProgress() {
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
 
+      // Query the database to find users who haven't submitted for today
+      try {
+        const users = await User.find({
+          lastSubmissionDate: { $lt: today, $gte: yesterday },
+        });
+
+        // Iterate through the users and send reminders
+        for (const user of users) {
+          // Send a reminder message to the user
+          const userId = user.userId; // User's Discord ID
+          const reminderMessage = "Don't forget to submit your daily progress!";
+
+          // Replace the following line with your desired method to send the reminder to the user
+          const discordUser = await client.users.fetch(userId);
+          discordUser.send(reminderMessage);
+        }
+      } catch (err) {
+        console.error("Error querying the database:", err);
+      }
+    }
+
+    // Schedule the reminder function to run at 6:00 PM (18:00) in GMT+5:30 every day
+    schedule.scheduleJob(
+      "0 18 * * *",
+      { tz: "Asia/Kolkata" },
+      checkDailyProgress
+    );
+    //============================Manually trigger reminder [Testing]========================
+    if (
+      message.content === "!testreminder"
+    ) {
+      checkDailyProgress(); // Manually trigger the reminder check
+      message.channel.send("Testing reminders..."); // Send a confirmation message
+    }
     //---------------------------------- EXPORT_CHALLENGE_RECORD_SHEET ------------------------//
 
     if (message.content === "!export") {
