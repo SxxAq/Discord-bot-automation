@@ -96,6 +96,22 @@ db.once("open", () => {
             value: "Export Record of all participants.",
           },
           {
+            name: "!about",
+            value: "Display information about the bot.",
+          },
+          {
+            name: "!testreminder",
+            value: "Manually trigger the daily progress reminder.",
+          },
+          {
+            name: "!export-eligible",
+            value: "Export a list of eligible participants in PDF format.",
+          },
+          {
+            name: "!export-eligible-xlsx",
+            value: "Export a list of eligible participants in XLSX format.",
+          },
+          {
             name: "!help",
             value: "Display this help message.",
           },
@@ -107,6 +123,7 @@ db.once("open", () => {
 
       message.channel.send({ embeds: [helpEmbed] });
     }
+
     //-------------------------------------- SUBMIT_TASK_POST_SETUP ------------------------------//
     if (message.content.startsWith("!submit")) {
       const userLink = message.content.slice("!submit".length).trim();
@@ -269,9 +286,7 @@ db.once("open", () => {
       checkDailyProgress
     );
     //============================Manually trigger reminder [Testing]========================
-    if (
-      message.content === "!testreminder"
-    ) {
+    if (message.content === "!testreminder") {
       checkDailyProgress(); // Manually trigger the reminder check
       message.channel.send("Testing reminders..."); // Send a confirmation message
     }
