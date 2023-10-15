@@ -258,11 +258,14 @@ db.once("open", () => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      // Query the database to find users who haven't submitted for today
+      console.log("Checking progress for:", today);
+
       try {
         const users = await User.find({
           lastSubmissionDate: { $lt: today, $gte: yesterday },
         });
+
+        console.log("Users to remind:", users);
 
         // Iterate through the users and send reminders
         for (const user of users) {
@@ -280,11 +283,11 @@ db.once("open", () => {
     }
 
     // Schedule the reminder function to run at 6:00 PM (18:00) in GMT+5:30 every day
-    schedule.scheduleJob(
-      "0 18 * * *",
-      { tz: "Asia/Kolkata" },
-      checkDailyProgress
-    );
+    schedule.scheduleJob("0 18 * * *", { tz: "Asia/Kolkata" }, () => {
+      console.log("Scheduled job triggered.");
+      checkDailyProgress();
+    });
+
     //============================Manually trigger reminder [Testing]========================
     if (
       message.content === "!testreminder" &&
